@@ -33,7 +33,7 @@ export const chatWithAssistant = async (
       {
         role: "system",
         content:
-          "You are StudySmart assistant. Give concise, helpful learning support for student notes and quizzes.",
+          "You are StudySmart assistant. Give concise, helpful learning support for student notes and quizzes. Be friendly, encouraging, and use simple language suitable for a high school student to explain complex topics.",
       },
       ...safeHistory,
       {
@@ -64,14 +64,18 @@ export const summarizeNotes = async (text: string): Promise<{
         role: "user",
         content: `You are an expert educator. Analyze the following study notes and provide:
 
-1. A structured bullet-point summary organized by main topics
-2. Key terms and definitions
+1. A quick, high-level structured bullet-point summary of the core syllabus or notes, organized by main topics. Use very simple, easy-to-understand language and keep it concise.
+2. Key terms and definitions. If any important equations or scientific constants are foundational to the notes, please also explicitly include them here as key terms.
+3. Extract ALL relevant equations, mathematical formulas, and scientific constants with their names and a brief explanation into a dedicated formulas array (this applies to all types of text, including plain text syllabuses). If there are none, return an empty array for formulas.
 
 Format your response as JSON (ONLY JSON, no other text):
 {
   "summary": "# Main Topic\\n- Bullet point 1\\n- Bullet point 2\\n\\n## Sub Topic\\n- Point 1",
   "keyTerms": [
-    { "term": "Term name", "definition": "Clear definition" }
+    { "term": "Term name", "definition": "Clear, simple definition" }
+  ],
+  "formulas": [
+    { "name": "Name of Formula", "formula": "The mathematical formula (e.g. F = ma)", "explanation": "What it calculates" }
   ]
 }
 
@@ -142,7 +146,7 @@ Return ONLY valid JSON in this format (no markdown, no explanation before/after)
       "question": "The actual question text?",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correct": "Option A",
-      "explanation": "Why this is correct and why others are wrong."
+      "explanation": "Why this is correct and why others are wrong. Use simple, easy-to-understand language."
     }
   ]
 }

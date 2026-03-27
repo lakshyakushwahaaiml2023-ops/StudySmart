@@ -6,6 +6,7 @@ import { createConfetti, staggerElements } from "@/lib/animations";
 interface SummaryData {
   summary: string;
   keyTerms: Array<{ term: string; definition: string }>;
+  formulas?: Array<{ name: string; formula: string; explanation: string }>;
   questions: Array<{
     question: string;
     options: string[];
@@ -19,7 +20,7 @@ interface Props {
   onReset: () => void;
 }
 
-type TabType = "summary" | "terms" | "quiz";
+type TabType = "summary" | "terms" | "formulas" | "quiz";
 
 export default function SummaryDisplay({ data, onReset }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>("summary");
@@ -89,6 +90,9 @@ export default function SummaryDisplay({ data, onReset }: Props) {
   const tabs = [
     { id: "summary" as TabType, label: "📖 Summary", icon: "📖" },
     { id: "terms" as TabType, label: "📚 Key Terms", icon: "📚" },
+    ...(data.formulas && data.formulas.length > 0
+      ? [{ id: "formulas" as TabType, label: "∑ Formulas", icon: "∑" }]
+      : []),
     { id: "quiz" as TabType, label: "🎯 Quiz", icon: "🎯" },
   ];
 
@@ -138,8 +142,7 @@ export default function SummaryDisplay({ data, onReset }: Props) {
               </p>
             </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-3 gap-4 mt-8 pt-8 border-t border-slate-700/30">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-slate-700/30">
               <div className="text-center p-4 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
                 <div className="text-2xl font-bold gradient-text">
                   {data.summary.split(" ").length}
@@ -151,6 +154,12 @@ export default function SummaryDisplay({ data, onReset }: Props) {
                   {data.keyTerms.length}
                 </div>
                 <p className="text-sm text-slate-400 mt-1">Key Terms</p>
+              </div>
+              <div className="text-center p-4 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
+                <div className="text-2xl font-bold gradient-text">
+                  {data.formulas?.length || 0}
+                </div>
+                <p className="text-sm text-slate-400 mt-1">Formulas</p>
               </div>
               <div className="text-center p-4 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
                 <div className="text-2xl font-bold gradient-text">
@@ -186,6 +195,36 @@ export default function SummaryDisplay({ data, onReset }: Props) {
                       </p>
                     </div>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Formulas Tab */}
+        {activeTab === "formulas" && data.formulas && (
+          <div data-tab-content className="animate-fadeInUp">
+            <h3 className="text-2xl font-bold text-slate-100 mb-6">Key Formulas</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {data.formulas.map((item, index) => (
+                <div
+                  key={index}
+                  className="card-hover border border-slate-700/30 p-5 hover:shadow-lg hover:shadow-pink-500/10 group flex flex-col justify-between"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div>
+                    <h4 className="font-bold text-pink-400 text-lg mb-4 flex items-center gap-2">
+                      <span className="text-2xl">∑</span> {item.name}
+                    </h4>
+                    <div className="bg-slate-900/80 p-4 rounded-lg border border-pink-500/20 mb-4 shadow-inner">
+                      <code className="text-xl md:text-2xl font-mono text-cyan-300 font-bold block text-center">
+                        {item.formula}
+                      </code>
+                    </div>
+                  </div>
+                  <p className="text-slate-300 text-sm leading-relaxed border-t border-slate-700/30 pt-3">
+                    {item.explanation}
+                  </p>
                 </div>
               ))}
             </div>

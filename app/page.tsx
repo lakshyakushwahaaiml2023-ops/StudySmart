@@ -9,6 +9,7 @@ import { smoothScrollToElement, createConfetti } from "@/lib/animations";
 export interface SummaryData {
   summary: string;
   keyTerms: Array<{ term: string; definition: string }>;
+  formulas?: Array<{ name: string; formula: string; explanation: string }>;
   questions: Array<{
     question: string;
     options: string[];
@@ -23,6 +24,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
+  const [quizDifficulty, setQuizDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
+  const [quizCount, setQuizCount] = useState<number>(5);
 
   const handleTextInput = (inputText: string) => {
     setText(inputText);
@@ -76,8 +79,8 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: cleanedText,
-          difficulty: "Medium",
-          count: 5,
+          difficulty: quizDifficulty,
+          count: quizCount,
         }),
       });
 
@@ -92,6 +95,7 @@ export default function Home() {
       setSummaryData({
         summary: summaryResult.summary,
         keyTerms: summaryResult.keyTerms,
+        formulas: summaryResult.formulas || [],
         questions: mcqResult.questions,
       });
 
@@ -132,38 +136,33 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      {/* Animated background gradients */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute top-1/2 -left-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: "1s" }}></div>
-        <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-pink-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: "2s" }}></div>
-      </div>
+    <div className="min-h-screen flex flex-col md:flex-row">
+      {/* Background is now handled directly by body styling in globals.css */}
 
-      {/* Header */}
-      <header className="relative border-b border-slate-800/50 bg-slate-900/30 backdrop-blur-xl shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-fadeInDown">
-            <h1 className="text-4xl md:text-5xl font-bold gradient-text">StudySmart</h1>
-            <p className="text-slate-300 mt-2 text-lg">
-              Transform your notes into summaries and quizzes instantly
-            </p>
-          </div>
-        </div>
+      {/* Sidebar (Floating Logo on Desktop, Top on Mobile) */}
+      <aside className="relative md:fixed md:left-0 md:top-0 w-full md:w-auto flex flex-col items-center justify-center p-4 md:p-8 z-50">
+        <a href="/" className="group cursor-pointer flex-shrink-0">
+          <img 
+            src="/logo.png" 
+            alt="StudySmart Logo" 
+            className="h-24 md:h-32 lg:h-40 w-auto object-contain transition-all duration-300 group-hover:drop-shadow-[0_0_25px_#0ff] group-active:scale-95 mix-blend-screen"
+          />
+        </a>
 
         {/* Progress bar */}
         {loading && (
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-800/30">
+          <div className="absolute top-full left-0 right-0 h-1 bg-slate-900/80">
             <div
-              className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 transition-all duration-300"
+              className="h-full bg-gradient-to-r from-cyan-400 via-magenta-500 to-green-400 transition-all duration-300 shadow-[0_0_10px_rgba(0,255,255,0.8)]"
               style={{ width: `${progress}%` }}
             ></div>
           </div>
         )}
-      </header>
+      </aside>
 
-      {/* Main Content */}
-      <main className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Main Content Area */}
+      <div className="flex-1 w-full md:ml-64 lg:ml-72 flex justify-center">
+        <main className="relative w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-4 md:py-12">
         {!summaryData ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Input Section */}
@@ -178,6 +177,10 @@ export default function Home() {
                   onChange={handleTextInput}
                   onGenerate={handleGenerateSummary}
                   isLoading={loading}
+                  difficulty={quizDifficulty}
+                  setDifficulty={setQuizDifficulty}
+                  questionCount={quizCount}
+                  setQuestionCount={setQuizCount}
                 />
 
                 {error && (
@@ -256,17 +259,7 @@ export default function Home() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="relative border-t border-slate-800/50 bg-slate-900/30 backdrop-blur-xl mt-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
-          <p className="text-sm text-slate-400">
-            StudySmart © 2024 | <span className="text-cyan-400">Powered by Groq</span>
-          </p>
-          <p className="text-xs text-slate-500 mt-2">
-            Made with ❤️ for students everywhere
-          </p>
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }

@@ -3,25 +3,31 @@
 @import "tailwindcss";
 
 :root {
-  --primary: #06b6d4;
-  --primary-dark: #0891b2;
-  --secondary: #8b5cf6;
-  --accent: #ec4899;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
+  --primary: #0ff; /* Neon Cyan */
+  --primary-dark: #00cccc;
+  --secondary: #f0f; /* Neon Magenta */
+  --secondary-dark: #cc00cc;
+  --accent: #39ff14; /* Neon Green */
+  --success: #39ff14;
+  --warning: #ffea00; /* Neon Yellow */
+  --danger: #ff073a; /* Neon Red */
   
-  --bg-dark: #0f172a;
-  --bg-darker: #020617;
-  --bg-card: #1e293b;
-  --bg-card-hover: #334155;
+  --bg-dark: rgba(5, 5, 10, 0.85);
+  --bg-darker: rgba(2, 2, 5, 0.95);
+  --bg-card: rgba(10, 10, 20, 0.7);
+  --bg-card-hover: rgba(20, 20, 35, 0.85);
   
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-tertiary: #94a3b8;
+  --text-primary: #ffffff;
+  --text-secondary: #e0e0e0;
+  --text-tertiary: #a0a0a0;
   
-  --border-color: #334155;
-  --border-color-light: #475569;
+  --border-color: rgba(0, 255, 255, 0.3);
+  --border-color-light: rgba(255, 0, 255, 0.4);
+
+  --neon-glow-cyan: 0 0 5px #0ff, 0 0 10px #0ff, 0 0 20px rgba(0, 255, 255, 0.5);
+  --neon-glow-magenta: 0 0 5px #f0f, 0 0 10px #f0f, 0 0 20px rgba(255, 0, 255, 0.5);
+  --neon-box-cyan: 0 0 10px rgba(0, 255, 255, 0.5), inset 0 0 10px rgba(0, 255, 255, 0.2);
+  --neon-box-magenta: 0 0 10px rgba(255, 0, 255, 0.5), inset 0 0 10px rgba(255, 0, 255, 0.2);
 }
 
 * {
@@ -33,8 +39,8 @@ html {
 }
 
 body {
-  @apply bg-slate-950 text-slate-100 font-sans;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  @apply text-slate-100 font-sans;
+  background-color: #000000;
   background-attachment: fixed;
 }
 
@@ -307,30 +313,44 @@ code, pre {
 
 /* ============ GLASSMORPHISM ============ */
 .glass {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--bg-card);
+  backdrop-filter: blur(12px); /* Reduced for performance */
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  box-shadow: var(--neon-box-cyan);
 }
 
 .glass-dark {
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(71, 85, 105, 0.3);
+  background: var(--bg-darker);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 0, 255, 0.2);
+  box-shadow: var(--neon-box-magenta);
 }
 
 .glass-light {
-  background: rgba(51, 65, 85, 0.5);
-  backdrop-filter: blur(15px);
-  border: 1px solid rgba(100, 116, 139, 0.4);
+  background: rgba(20, 20, 35, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(57, 255, 20, 0.3);
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.2);
 }
 
 /* ============ GRADIENT TEXT ============ */
 .gradient-text {
-  @apply bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent;
+  color: #fff;
+  text-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px #0ff,
+    0 0 40px #f0f,
+    0 0 80px #f0f;
 }
 
 .gradient-text-secondary {
-  @apply bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent;
+  color: #fff;
+  text-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px #0ff,
+    0 0 40px #39ff14;
 }
 
 /* ============ CARD STYLES ============ */
@@ -387,23 +407,27 @@ code, pre {
 }
 
 .btn-primary {
-  background: linear-gradient(to right, #06b6d4, #3b82f6);
-  color: #0f172a;
-  box-shadow: 0 10px 24px rgba(6, 182, 212, 0.15);
+  background: transparent;
+  color: #0ff;
+  border: 2px solid #0ff;
+  box-shadow: var(--neon-box-cyan);
+  text-shadow: 0 0 5px #0ff;
 }
 
 .btn-primary:hover {
-  background: linear-gradient(to right, #22d3ee, #60a5fa);
-  box-shadow: 0 12px 28px rgba(6, 182, 212, 0.4);
+  background: rgba(0, 255, 255, 0.1);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.8), inset 0 0 15px rgba(0, 255, 255, 0.4);
+  transform: translateY(-2px);
+  color: #fff;
 }
 
 .btn-primary:active {
-  transform: scale(0.95);
+  transform: translateY(0) scale(0.98);
 }
 
 .btn-primary:focus {
   outline: none;
-  box-shadow: 0 0 0 2px #06b6d4;
+  box-shadow: 0 0 0 2px #020205, 0 0 0 4px #0ff;
 }
 
 .btn-secondary {

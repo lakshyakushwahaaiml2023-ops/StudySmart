@@ -8,9 +8,13 @@ interface Props {
   onChange: (text: string) => void;
   onGenerate: () => void;
   isLoading: boolean;
+  difficulty: "Easy" | "Medium" | "Hard";
+  setDifficulty: (diff: "Easy" | "Medium" | "Hard") => void;
+  questionCount: number;
+  setQuestionCount: (count: number) => void;
 }
 
-export default function NotesInput({ value, onChange, onGenerate, isLoading }: Props) {
+export default function NotesInput({ value, onChange, onGenerate, isLoading, difficulty, setDifficulty, questionCount, setQuestionCount }: Props) {
   const [isDragActive, setIsDragActive] = useState(false);
   const [filePreview, setFilePreview] = useState<string>("");
   const [isExtracting, setIsExtracting] = useState(false);
@@ -189,7 +193,41 @@ export default function NotesInput({ value, onChange, onGenerate, isLoading }: P
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-4">
+        {/* Quiz Settings */}
+        <div className="flex flex-col sm:flex-row gap-4 p-4 bg-slate-800/30 border border-slate-700/50 rounded-xl">
+          <div className="flex-1">
+            <label className="block text-sm font-semibold text-slate-300 mb-2">
+              Quiz Difficulty
+            </label>
+            <select
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value as "Easy" | "Medium" | "Hard")}
+              disabled={isLoading}
+              className="w-full bg-slate-900/50 border border-slate-700 text-slate-100 rounded-lg px-4 py-2.5 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 transition-all outline-none"
+            >
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-semibold text-slate-300 mb-2">
+              Number of Questions
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={questionCount}
+              onChange={(e) => setQuestionCount(parseInt(e.target.value) || 5)}
+              disabled={isLoading}
+              className="w-full bg-slate-900/50 border border-slate-700 text-slate-100 rounded-lg px-4 py-2.5 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 transition-all outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3">
         <button
           onClick={onGenerate}
           disabled={!value.trim() || isLoading}
@@ -231,6 +269,7 @@ export default function NotesInput({ value, onChange, onGenerate, isLoading }: P
             </svg>
           </button>
         )}
+      </div>
       </div>
 
       {/* Tips */}
