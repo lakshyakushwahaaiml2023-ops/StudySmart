@@ -5,6 +5,9 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { createConfetti, staggerElements } from "@/lib/animations";
+import { exportToJSON, exportToTXT, exportToPDF } from "@/lib/export";
+import { Menu, Transition } from "@headlessui/react";
+import { Fragment } from "react";
 
 interface SummaryData {
   summary: string;
@@ -139,15 +142,79 @@ export default function SummaryDisplay({ data, onReset, onGenerateTargetedQuiz, 
       {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <h2 className="text-3xl font-bold gradient-text">Your Learning Material</h2>
-        <button
-          onClick={onReset}
-          className="btn btn-secondary"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Material
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Intelligence Export Dropdown */}
+          <Menu as="div" className="relative inline-block text-left">
+            <div>
+              <Menu.Button className="btn btn-secondary border-cyan-500/30 flex items-center gap-2 group hover:border-cyan-500 transition-all">
+                <svg className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span className="text-xs font-black uppercase tracking-widest">Download Intelligence</span>
+              </Menu.Button>
+            </div>
+            <Transition
+              as={Fragment}
+              enter="transition ease-out duration-200"
+              enterFrom="transform opacity-0 scale-95"
+              enterTo="transform opacity-100 scale-100"
+              leave="transition ease-in duration-75"
+              leaveFrom="transform opacity-100 scale-100"
+              leaveTo="transform opacity-0 scale-95"
+            >
+              <Menu.Items className="absolute right-0 mt-3 w-56 origin-top-right rounded-2xl bg-[#0a0f18] border border-cyan-500/30 shadow-[0_0_50px_rgba(0,0,0,0.5)] ring-1 ring-black ring-opacity-5 focus:outline-none z-50 overflow-hidden">
+                <div className="py-1">
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => exportToPDF(data)}
+                        className={`${
+                          active ? "bg-cyan-500/10 text-cyan-400" : "text-slate-300"
+                        } flex w-full items-center px-4 py-3 text-xs font-black uppercase tracking-widest transition-colors border-b border-white/5`}
+                      >
+                        <span className="text-xl mr-3">📄</span> Portable PDF Format
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => exportToTXT(data)}
+                        className={`${
+                          active ? "bg-purple-500/10 text-purple-400" : "text-slate-300"
+                        } flex w-full items-center px-4 py-3 text-xs font-black uppercase tracking-widest transition-colors border-b border-white/5`}
+                      >
+                        <span className="text-xl mr-3">📝</span> Plain Text (TXT)
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => exportToJSON(data)}
+                        className={`${
+                          active ? "bg-blue-500/10 text-blue-400" : "text-slate-300"
+                        } flex w-full items-center px-4 py-3 text-xs font-black uppercase tracking-widest transition-colors`}
+                      >
+                        <span className="text-xl mr-3">🧠</span> Neural JSON Data
+                      </button>
+                    )}
+                  </Menu.Item>
+                </div>
+              </Menu.Items>
+            </Transition>
+          </Menu>
+
+          <button
+            onClick={onReset}
+            className="btn btn-secondary border-slate-800"
+          >
+            <svg className="w-5 h-5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="text-xs font-black uppercase tracking-widest">New Core</span>
+          </button>
+        </div>
       </div>
 
       {/* Tab Navigation */}

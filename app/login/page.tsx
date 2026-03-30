@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type ComponentType, type SVGProps } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/lib/UserContext";
 import {
@@ -20,13 +20,14 @@ import {
 // Floating Particle Canvas
 // ─────────────────────────────────────────────
 const ParticleField = () => {
-  const canvasRef = useRef(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    let animId;
+    if (!ctx) return;
+    let animId: number;
     let W = (canvas.width = window.innerWidth);
     let H = (canvas.height = window.innerHeight);
 
@@ -155,7 +156,15 @@ const NeuralNet = () => {
 // ─────────────────────────────────────────────
 // Feature Card
 // ─────────────────────────────────────────────
-const FeatureCard = ({ icon: Icon, title, desc, accent, delay }) => (
+interface FeatureCardProps {
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  title: string;
+  desc: string;
+  accent: string;
+  delay: string;
+}
+
+const FeatureCard = ({ icon: Icon, title, desc, accent, delay }: FeatureCardProps) => (
   <div
     className="feature-card group relative rounded-2xl p-6 border border-white/5 bg-white/[0.03] backdrop-blur-xl overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:border-white/15"
     style={{ animationDelay: delay }}
@@ -185,7 +194,15 @@ const FeatureCard = ({ icon: Icon, title, desc, accent, delay }) => (
 // ─────────────────────────────────────────────
 // Testimonial Card
 // ─────────────────────────────────────────────
-const TestimonialCard = ({ name, role, text, stars, avatar }) => (
+interface TestimonialCardProps {
+  name: string;
+  role: string;
+  text: string;
+  stars: number;
+  avatar: string;
+}
+
+const TestimonialCard = ({ name, role, text, stars, avatar }: TestimonialCardProps) => (
   <div className="relative rounded-2xl p-6 border border-white/5 bg-white/[0.03] backdrop-blur-xl hover:border-purple-500/20 transition-all duration-300 hover:-translate-y-1">
     <div className="flex gap-1 mb-4">
       {Array.from({ length: stars }).map((_, i) => (
