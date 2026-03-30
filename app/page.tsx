@@ -7,9 +7,10 @@ import ChatCloudButton from "@/components/ChatCloudButton";
 import { validateText, cleanText } from "@/lib/textProcessing";
 import { smoothScrollToElement, createConfetti } from "@/lib/animations";
 import { useUser } from "@/lib/UserContext";
-import ProfileModal from "@/components/ProfileModal";
+import { useRouter } from "next/navigation";
 import StudyPlanner from "@/components/StudyPlanner";
 import InteractiveMiniCalendar from "@/components/InteractiveMiniCalendar";
+import { calculateEventSchedule } from "@/lib/scheduler";
 
 export interface SummaryData {
   summary: string;
@@ -41,8 +42,8 @@ export default function Home() {
   const [quizCount, setQuizCount] = useState<number>(5);
 
   // User Profile & Navigation State
-  const { profile } = useUser();
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const { profile, logout } = useUser();
+  const router = useRouter();
 
   const handleTextInput = (inputText: string) => {
     setText(inputText);
@@ -277,7 +278,7 @@ export default function Home() {
           {!profile.isLoggedIn ? (
             <div className="flex flex-col items-center flex-shrink-0 mt-4 md:mt-auto md:mb-12">
               <button
-                onClick={() => setIsProfileModalOpen(true)}
+                onClick={() => router.push("/login")}
                 className="btn btn-primary px-6 py-3 text-sm font-bold shadow-glow"
               >
                 Neural Login
@@ -291,7 +292,7 @@ export default function Home() {
           ) : (
             <div className="flex flex-col items-center w-full mt-2">
               <button
-                onClick={() => setIsProfileModalOpen(true)}
+                onClick={() => router.push("/login")}
                 className="group flex items-center gap-4 w-full justify-center p-3 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-cyan-500/50 transition-colors"
               >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-[0_0_15px_rgba(0,255,255,0.3)] group-hover:scale-105 transition-all">
@@ -305,6 +306,13 @@ export default function Home() {
                     Verified Scholar
                   </span>
                 </div>
+              </button>
+              
+              <button 
+                onClick={logout}
+                className="mt-3 flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold text-red-400/80 hover:text-red-400 uppercase tracking-[0.2em] transition-all hover:bg-red-500/5 rounded-lg border border-transparent hover:border-red-500/20"
+              >
+                <span className="text-xs">⎋</span> Terminate Session
               </button>
             </div>
           )}
@@ -556,21 +564,17 @@ export default function Home() {
       {/* Conditionally provide dynamic screen context to the floating chatbot */}
       <ChatCloudButton
         contextData={
-          summaryData
-            ? {
-                summaryData,
-                quizAnswers,
-                quizSubmitted,
-              }
-            : null
+          profile.isLoggedIn ? {
+            todaysTasks: profile.events.flatMap(event => 
+               calculateEventSchedule(event).map((t: any) => ({ ...t, eventName: event.name, eventId: event.id }))
+            ),
+            summaryData,
+            quizAnswers,
+            quizSubmitted,
+          } : null
         }
       />
 
-      {/* Modals */}
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-      />
     </div>
   );
 }

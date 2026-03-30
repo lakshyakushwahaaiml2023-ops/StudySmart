@@ -5,7 +5,7 @@ import path from "path";
 
 export async function POST(req: Request) {
   try {
-    const { phoneNumber, taskId, eventId, taskName, profile } = await req.json();
+    const { phoneNumber, taskId, eventId, taskName, profile, reason = "deadline" } = await req.json();
 
     if (!phoneNumber || !eventId || !profile) {
       return NextResponse.json({ error: "Missing required call data." }, { status: 400 });
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       fs.mkdirSync(path.join(process.cwd(), "tmp"));
     }
     
-    fs.writeFileSync(contextPath, JSON.stringify({ profile, eventId, taskId, taskName }));
+    fs.writeFileSync(contextPath, JSON.stringify({ profile, eventId, taskId, taskName, reason }));
 
     const client = twilio(accountSid, authToken);
 
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing NEXT_PUBLIC_BASE_URL" }, { status: 500 });
     }
 
-    const webhookUrl = `${baseUrl}/api/twilio/voice?eventId=${encodeURIComponent(eventId)}&taskName=${encodeURIComponent(taskName)}`;
+    const webhookUrl = `${baseUrl}/api/twilio/voice?eventId=${encodeURIComponent(eventId)}&taskName=${encodeURIComponent(taskName)}&reason=${encodeURIComponent(reason)}`;
 
     const call = await client.calls.create({
       url: webhookUrl,

@@ -31,13 +31,13 @@ export const chatWithAssistant = async (
 Your goal is to support students and VERIFY their learning.
 
 CRITICAL TASK VERIFICATION RULES:
-1. If a user says "I've finished [Topic]" or "I'm done with [Task]", look for a matching task in their "LIVE DASHBOARD CONTEXT".
-2. If match found, YOU MUST start a 1-question mini-quiz to verify their knowledge. 
-3. Output your response, but append exactly "[QUIZ_START: taskId]" at the end (e.g., "[QUIZ_START: task-123-0]").
-4. Once the user answers, if they are CORRECT, provide positive feedback and append exactly "[VERIFIED: taskId]" at the end.
-5. If they are INCORRECT, explain why and suggest they review the topic. Do NOT add the [VERIFIED] tag.
+1. SEQUENTIAL MASTERY: Tasks MUST be completed in the exact order listed (1st, 2nd, etc.). Look at the "TODAY'S OPERATIONAL TASKS" list.
+2. If a user tries to mark a task as done (e.g. Task #2) while a previous task (e.g. Task #1) is still "PENDING", YOU MUST REFUSE. Explain that StudySmart enforces a linear mastery path and they must finish the current task first.
+3. If the user completes the current (first unfinished) task, provide high-energy reinforcement and append exactly "[VERIFIED: task-ID]" at the very end of your message.
+4. MANDATORY: The tag [VERIFIED: task-ID] is the ONLY way the dashboard updates. You MUST include it for the user's progress to be saved.
+5. If they ask for a practice problem or quiz, feel free to generate one, but don't force it for task completion.
 
-TONE: Friendly, encouraging, use high-school level language. 
+TONE: Extra friendly, HIGH-ENERGY, encouraging. Use high-school level language and 100% technical correctness in your explanations. 
 FORMATTING: ALWAYS use standard Markdown and LaTeX for scientific content (e.g. $ x $ and $$ E=mc^2 $$).
 
 SCHEDULE SYNC & TIME RULES:
@@ -61,18 +61,22 @@ SCHEDULE SYNC & TIME RULES:
     systemPrompt += `\n\n--- LIVE DASHBOARD CONTEXT ---`;
     systemPrompt += `\nSTUDENT: ${contextData.profile.name} (${contextData.profile.studyLevel})`;
     
-    contextData.profile.events.forEach((event: any) => {
-      systemPrompt += `\nTARGET: ${event.name}`;
-      if (event.current_schedule) {
-        systemPrompt += `\nTASKS: ${JSON.stringify(event.current_schedule.map((t: any) => ({
-          id: t.id,
-          task: t.task,
-          scheduled: `${t.startTime} - ${t.endTime}`,
-          duration: t.estimated_time,
-          reason: t.reason
-        })))}`;
-      }
-    });
+    // Use the optimized activeSchedule passed from the frontend if available
+    const scheduleToUse = contextData.activeSchedule || (contextData.profile.events[0]?.plan?.today_tasks || []);
+
+    systemPrompt += `\nCURRENT SCHEDULE:\n${JSON.stringify(scheduleToUse.map((t: any) => ({
+      id: t.id,
+      task: t.task,
+      time: t.timeSlot || t.estimated_time,
+      isCompleted: t.isCompleted
+    })))}`;
+
+    if (contextData.studyText) {
+      systemPrompt += `\n\n--- CURRENT STUDY MATERIAL ---\n${contextData.studyText.slice(0, 2500)}\n(Use this content for your mini-quiz to ensure relevance)`;
+    }
+    if (contextData.summary) {
+      systemPrompt += `\n\n--- AI SUMMARY ---\n${contextData.summary}`;
+    }
     systemPrompt += `\n------------------------------`;
   }
 

@@ -72,16 +72,30 @@ function TaskCard({
   taskId,
   eventId,
   isCompleted,
+  isLocked,
   onToggle,
 }: {
   task: any;
   taskId: string;
   eventId: string;
   isCompleted: boolean;
+  isLocked: boolean;
   onToggle: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const typeStyles = getTypeStyles(task.type);
+
+  const handleTaskClick = () => {
+    if (isLocked) return;
+    const isBreak = task.type?.toLowerCase().includes("rest") || 
+                   task.type?.toLowerCase().includes("meal") ||
+                   task.task?.toLowerCase().includes("break") ||
+                   task.task?.toLowerCase().includes("nap");
+    
+    if (isBreak) return; // Prevent opening focus mode for breaks
+    const index = taskId.split("-").pop();
+    window.location.href = `/task/${eventId}/${index}`;
+  };
 
   // Dispatch context change when this study target is focused/opened
   useEffect(() => {
@@ -94,43 +108,54 @@ function TaskCard({
 
   return (
     <div
-      className={`card-interactive !p-0 overflow-hidden transition-all duration-300 border ${isCompleted ? "opacity-60 border-emerald-500/30 bg-emerald-950/5" : "bg-[#0a0f18] border-slate-800/50"}`}
+      className={`card-interactive !p-0 overflow-hidden transition-all duration-300 border ${
+        isLocked ? "opacity-30 grayscale-[50%] pointer-events-none cursor-not-allowed border-slate-800" :
+        isCompleted ? "opacity-60 border-emerald-500/30 bg-emerald-950/5" : 
+        "bg-[#0a0f18] border-slate-800/50"
+      }`}
     >
       <div className="flex items-stretch">
         {/* Verification Trigger */}
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (task.type?.toLowerCase().includes("rest") || task.type?.toLowerCase().includes("meal")) {
-              onToggle(); // Simple toggle for breaks
-              return;
-            }
+            if (isLocked) return;
+            
+            // Re-enabling the quiz for the dashboard button
             const event = new CustomEvent("verify-task", {
               detail: { taskId, taskName: task.task, eventId },
             });
             window.dispatchEvent(event);
           }}
-          disabled={isCompleted}
-          className={`w-16 border-r transition-all flex flex-col items-center justify-center gap-1 group ${isCompleted ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400" : "border-slate-800 bg-[#070b14] text-slate-500 hover:text-cyan-400 hover:bg-[#0c1424]"}`}
+          disabled={isCompleted || isLocked}
+          className={`w-16 border-r transition-all flex flex-col items-center justify-center gap-1 group ${
+            isLocked ? "border-slate-800 bg-slate-900/50 text-slate-700" :
+            isCompleted ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400" : 
+            "border-slate-800 bg-[#070b14] text-slate-500 hover:text-cyan-400 hover:bg-[#0c1424]"
+          }`}
         >
-          {isCompleted ? (
+          {isLocked ? (
+             <svg className="w-5 h-5 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+             </svg>
+          ) : isCompleted ? (
             <div className="flex flex-col items-center">
                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                </svg>
-               <span className="text-[7px] font-black uppercase tracking-tighter mt-0.5">{task.type?.toLowerCase().includes("rest") || task.type?.toLowerCase().includes("meal") ? "Rested" : "Verified"}</span>
+               <span className="text-[7px] font-black uppercase tracking-tighter mt-0.5">Verified</span>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-1 group-hover:animate-pulse">
                {task.type?.toLowerCase().includes("rest") || task.type?.toLowerCase().includes("meal") ? (
                   <span className="text-xl">☕</span>
                ) : (
-                 <>
-                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                   </svg>
-                   <span className="text-[7px] font-black uppercase tracking-tighter">Quiz</span>
-                 </>
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-[7px] font-black uppercase tracking-tighter">Quiz</span>
+                  </>
                )}
             </div>
           )}
@@ -138,8 +163,12 @@ function TaskCard({
 
         {/* Content area */}
         <div
-          onClick={() => setIsOpen(!isOpen)}
-          className="flex-1 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:bg-[#070b14]/50 transition-colors"
+          onClick={handleTaskClick}
+          className={`flex-1 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
+            (task.type?.toLowerCase().includes("rest") || task.type?.toLowerCase().includes("meal") || isLocked)
+              ? "cursor-default"
+              : "cursor-pointer hover:bg-[#070b14]/50"
+          }`}
         >
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1.5">
@@ -151,11 +180,15 @@ function TaskCard({
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{task.priority} Priority</span>
               </div>
             </div>
-            <h4 className={`font-bold text-lg transition-all ${isCompleted ? "text-slate-500 line-through" : "text-slate-100"}`}>
+            <h4 className={`font-bold text-lg transition-all ${
+               isLocked ? "text-slate-600" :
+               isCompleted ? "text-slate-500 line-through" : "text-slate-100"
+            }`}>
               {task.task}
             </h4>
             <div className="text-xs text-slate-500 mt-1 italic font-medium">
-              {task.reason} {isCompleted && <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 ml-2 not-italic font-black border border-emerald-500/30 bg-emerald-950/20 px-1.5 py-0.5 rounded-full uppercase tracking-widest"><span className="w-1 h-1 rounded-full bg-emerald-400" /> AI Verified</span>}
+              {isLocked ? "Complete previous task to unlock this session." : task.reason} 
+              {isCompleted && <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 ml-2 not-italic font-black border border-emerald-500/30 bg-emerald-950/20 px-1.5 py-0.5 rounded-full uppercase tracking-widest"><span className="w-1 h-1 rounded-full bg-emerald-400" /> AI Verified</span>}
             </div>
           </div>
 
@@ -167,10 +200,28 @@ function TaskCard({
                     <span className="block text-[9px] text-slate-500 mt-0.5">{task.timeSlot}</span>
                   </div>
               </div>
-             <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isOpen ? "bg-cyan-500/20 text-cyan-400" : "bg-slate-800 text-slate-400"}`}>
-                <svg className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                </svg>
+             <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+               isLocked ? "bg-slate-900 text-slate-700 border border-slate-800" :
+               (task.type?.toLowerCase().includes("rest") || task.type?.toLowerCase().includes("meal"))
+                 ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 animate-pulse"
+                 : isOpen ? "bg-cyan-500/20 text-cyan-400" : "bg-slate-800 text-slate-400"
+             }`}>
+                {isLocked ? (
+                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                   </svg>
+                ) : (task.type?.toLowerCase().includes("rest") || task.type?.toLowerCase().includes("meal")) ? (
+                  <div className="flex flex-col items-center">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-[6px] font-black uppercase mt-0.5 tracking-tighter">Live Wait</span>
+                  </div>
+                ) : (
+                  <svg className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
              </div>
           </div>
         </div>
@@ -554,7 +605,7 @@ export default function StudyPlanner() {
     handleGeneratePlan(newEvent);
   };
 
-  const handleGeneratePlan = async (event: Event) => {
+  const handleGeneratePlan = async (event: Event, isEarlyCompletion: boolean = false) => {
     setLoadingEventId(event.id);
     try {
       const response = await fetch("/api/generate-plan", {
@@ -564,6 +615,7 @@ export default function StudyPlanner() {
           profile,
           event,
           chatSnapshot: event.chatHistory || [],
+          isEarlyCompletion,
         }),
       });
 
@@ -579,6 +631,9 @@ export default function StudyPlanner() {
       };
       
       updateEvent(event.id, { plan: enrichedPlan });
+      if (isEarlyCompletion) {
+        import("@/lib/animations").then(lib => lib.createConfetti());
+      }
     } catch (error) {
       console.error(error);
       alert("Error generating the study plan. Please try again.");
@@ -780,7 +835,24 @@ export default function StudyPlanner() {
                </span>
                Today's Focus
             </h3>
-            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
+                {allTodaysTasks.length > 0 && allTodaysTasks.every(t => t.isCompleted) && (
+                  <div className="animate-fadeInUp flex items-center gap-3 bg-cyan-500/10 border border-cyan-500/40 px-4 py-2 rounded-2xl shadow-[0_0_20px_rgba(0,255,255,0.1)]">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest leading-tight">Neural Momentum</span>
+                      <span className="text-xs text-slate-100 font-bold">You're Ahead of Schedule!</span>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        const event = profile.events[0];
+                        if (event) handleGeneratePlan(event, true);
+                      }}
+                      className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-glow flex items-center gap-2"
+                    >
+                      ⚡ Pull Next Session
+                    </button>
+                  </div>
+                )}
                 {allTodaysTasks.length > 0 && (
                   <div className="flex items-center gap-2">
                     {profile.events[0]?.phoneNumber && (
@@ -788,17 +860,21 @@ export default function StudyPlanner() {
                         onClick={() => {
                           const event = profile.events[0];
                           const schedule = calculateEventSchedule(event);
+                          // Intelligently find the first task that isn't done yet, or fall back to the first task
+                          const targetTask = schedule.find((t: any) => !t.isCompleted) || schedule[0];
+                          
                           fetch("/api/twilio/call", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
                               phoneNumber: event.phoneNumber,
-                              taskId: `task-${event.id}-0`,
+                              taskId: targetTask.id,
                               eventId: event.id,
-                              taskName: schedule[0]?.task || "Test Task",
+                              taskName: targetTask.task,
                               profile,
+                              reason: "manual", // Flag this as a user-initiated status check
                             })
-                          }).then(() => alert("☎️ Calling your phone now...")).catch(e => alert("Call failed: " + e.message));
+                          }).then(() => alert("☎️ Sync Call Initiated. Connecting to your AI study companion...")).catch(e => alert("Call failed: " + e.message));
                         }}
                         className="text-[10px] bg-green-500/10 hover:bg-green-500/20 text-green-500 border border-green-500/30 px-3 py-1 rounded-full transition-all font-black uppercase tracking-widest flex items-center gap-1.5"
                       >
@@ -833,22 +909,32 @@ export default function StudyPlanner() {
             </div>
           ) : (
             <div className="grid gap-4">
-              {allTodaysTasks.map((taskItem) => (
-                <div key={taskItem.id} className="relative group">
-                  <div className="absolute -left-2 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-500 to-blue-500 rounded-full opacity-30 group-hover:opacity-100 transition-opacity" />
-                  <div className="text-[10px] text-cyan-500 font-black uppercase tracking-widest ml-4 mb-2 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
-                    Target: {taskItem.eventName}
+              {allTodaysTasks.map((task, idx) => {
+                const event = profile.events.find((e) => e.id === task.eventId);
+                if (!event) return null;
+
+                const isCompleted = !!task.isCompleted;
+                // A task is locked if any previous task in the flat list is NOT completed
+                const isLocked = allTodaysTasks.slice(0, idx).some(t => !t.isCompleted);
+                
+                return (
+                  <div key={task.id} className="relative group">
+                    <div className="absolute -left-2 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-500 to-blue-500 rounded-full opacity-30 group-hover:opacity-100 transition-opacity" />
+                    <div className="text-[10px] text-cyan-500 font-black uppercase tracking-widest ml-4 mb-2 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+                      Target: {event.name}
+                    </div>
+                    <TaskCard
+                      task={task}
+                      taskId={task.id}
+                      eventId={event.id}
+                      isCompleted={isCompleted}
+                      isLocked={isLocked}
+                      onToggle={() => toggleTaskCompletion(event.id, task.id)}
+                    />
                   </div>
-                  <TaskCard
-                    task={taskItem}
-                    taskId={taskItem.id}
-                    eventId={taskItem.eventId}
-                    isCompleted={taskItem.isCompleted}
-                    onToggle={() => toggleTaskCompletion(taskItem.eventId, taskItem.id)}
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

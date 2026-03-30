@@ -7,7 +7,7 @@ const groq = new Groq({
 
 export async function POST(req: Request) {
   try {
-    const { profile, event, chatSnapshot } = await req.json();
+    const { profile, event, chatSnapshot, isEarlyCompletion = false } = await req.json();
 
     if (!profile || !event) {
       return NextResponse.json(
@@ -46,6 +46,7 @@ INPUT CONTEXT:
 - Student Level: ${profile.studyLevel}
 - Current Progress: ${completedCount} tasks completed so far.
 - CURRENT LOCAL TIME: ${new Date().toLocaleTimeString()} (Use this to logically place a 'Food Break' if the session spans normal eating hours).
+- EARLY COMPLETION STATUS: ${isEarlyCompletion ? "YES - The student has finished today's tasks early and is ready for the NEXT subset of their roadmap." : "NO"}
 
 OUTPUT STRICT JSON REGARDLESS OF ANYTHING ELSE:
 {
@@ -85,6 +86,7 @@ OUTPUT STRICT JSON REGARDLESS OF ANYTHING ELSE:
 RULES:
 - NEVER overload the student (max 5 tasks per day).
 - Prioritize high-yield topics first using the Priority Score logic: Importance × Exam Weightage × (1 / Time Left) × Knowledge Gap.
+- EARLY COMPLETION RULE: If 'EARLY COMPLETION STATUS' is YES, DO NOT output the same tasks that were in the previous Day 1 plan. Transition strictly to the next logical set of topics from the roadmap to expand their study streak.
 - If days left <= 3 → enter PANIC MODE (only critical topics).
 - If syllabus is large and time is small → suggest selective study.
 - Tasks must feel achievable and motivating.

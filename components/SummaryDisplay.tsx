@@ -203,7 +203,7 @@ export default function SummaryDisplay({ data, onReset, onGenerateTargetedQuiz, 
               </div>
               <div className="text-center p-4 bg-slate-800/30 rounded-lg hover:bg-slate-800/50 transition-colors">
                 <div className="text-2xl font-bold gradient-text">
-                  {data.questions.length}
+                  {data.questions?.length || 0}
                 </div>
                 <p className="text-sm text-slate-400 mt-1">Questions</p>
               </div>

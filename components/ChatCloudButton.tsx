@@ -6,6 +6,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { streamTextInChunks } from "@/lib/animations";
 import { useUser } from "@/lib/UserContext";
+import { calculateEventSchedule } from "@/lib/scheduler";
 
 type ChatMessage = {
   id: string;
@@ -17,8 +18,10 @@ type ChatMessage = {
 function preprocessSummary(text: string): string {
   if (!text) return "";
   return text
-    .replace(/\\n/g, "\n")   // fix literal \n
-    .replace(/\\t/g, "\t")   // fix literal \t
+    .replace(/\\n/g, "\n")
+    .replace(/\\t/g, "\t")
+    .replace(/\[QUIZ_START:\s*[^\]]+\]/g, "")
+    .replace(/\[VERIFIED:\s*[^\]]+\]/g, "")
     .trim();
 }
 
@@ -41,7 +44,7 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   
-  const { profile, updateProfile } = useUser();
+  const { profile, updateProfile, toggleTaskCompletion, syncEventStartTime } = useUser();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -49,9 +52,7 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
 
   useEffect(() => {
     scrollToBottom();
-    // Sync chat context to global profile for dynamic planner optimization
     if (profile.isLoggedIn && messages.length > 1) {
-      // Use setTimeout to avoid strictly synchronous render loops
       setTimeout(() => {
         updateProfile({
           chatHistorySnapshot: messages.map(m => ({ role: m.role, content: m.content })).slice(-15)
@@ -78,7 +79,13 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
         body: JSON.stringify({
           message,
           history: nextMessages.filter((item) => item.role !== "assistant" || item.content !== messages[0]?.content).map(m => ({ role: m.role, content: m.content })),
-          contextData,
+          contextData: {
+            ...contextData,
+            profile, // Include the profile for full context
+            activeSchedule: contextData?.eventId 
+              ? calculateEventSchedule(profile.events.find(e => e.id === contextData.eventId))
+              : []
+          },
         }),
       });
 
@@ -107,11 +114,59 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
         scrollToBottom();
       }
 
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantMessageId ? { ...msg, isStreaming: false } : msg
-        )
-      );
+      // 1. PRIMARY MATCH: [VERIFIED: taskId]
+      const verifyMatch = data.reply.match(/\[VERIFIED:\s*(task-[a-z0-9-]+)\]/i);
+      let targetTaskId: string | null = null;
+      let targetEventId: string | null = null;
+
+      if (verifyMatch) {
+         targetTaskId = verifyMatch[1].trim();
+         console.info("⚡ Neural Sync (Primary) Triggered for", targetTaskId);
+         const parts = targetTaskId.split("-");
+         targetEventId = parts.length >= 2 ? parts[1] : null;
+      } 
+      // 2. HEURISTIC FALLBACK: If the AI forgot the tag but mentioned the task name
+      else if (contextData?.todaysTasks) {
+         const tasks = contextData.todaysTasks;
+         // Find a task name that is mentioned in the AI's reply or similarity matching
+         const foundTask = tasks.find((t: any) => 
+            !t.isCompleted && 
+            (data.reply.toLowerCase().includes(t.task.toLowerCase()) || 
+             t.task.toLowerCase().includes(data.reply.toLowerCase()) ||
+             // Check if user specifically asked for this task name
+             message.toLowerCase().includes(t.task.toLowerCase()))
+         );
+         
+         if (foundTask) {
+           console.warn("🛡️ Neural Sync (Fallback) triggered for task matching:", foundTask.task);
+           targetTaskId = foundTask.id;
+           targetEventId = foundTask.eventId;
+         }
+      }
+
+      if (targetTaskId && targetEventId) {
+         const cleanedReply = data.reply.replace(/\[VERIFIED:\s*task-[^\]]+\]/gi, "").trim();
+         
+         // Update state with cleaned content
+         setMessages((prev) =>
+           prev.map((msg) =>
+             msg.id === assistantMessageId ? { ...msg, content: cleanedReply, isStreaming: false } : msg
+           )
+         );
+
+         console.log("🛠️ Syncing Dashboard State: Marking Task", targetTaskId, "Done");
+         toggleTaskCompletion(targetEventId, targetTaskId);
+         syncEventStartTime(targetEventId);
+         
+         // Celebration!
+         import("@/lib/animations").then(lib => lib.createConfetti());
+      } else {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId ? { ...msg, isStreaming: false } : msg
+          )
+        );
+      }
     } catch (error: unknown) {
       const messageText = error instanceof Error ? error.message : "Error connecting to AI";
       setMessages((prev) => [
@@ -137,7 +192,6 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
         isOpen ? "scale-100 opacity-100 pointer-events-auto" : "scale-95 opacity-0 pointer-events-none"
       }`}>
         <div className="flex flex-col h-[550px] max-h-[75vh] rounded-3xl border border-cyan-500/40 bg-[#070b14] shadow-[0_0_50px_rgba(0,255,255,0.15)] overflow-hidden">
-          {/* Header */}
           <div className="flex items-center justify-between bg-gradient-to-r from-cyan-950/80 to-purple-950/80 border-b border-cyan-500/30 px-5 py-4">
             <div className="flex items-center gap-4">
               <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/20 shadow-[0_0_20px_rgba(0,255,255,0.4)]">
@@ -147,8 +201,14 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
                 </svg>
               </div>
               <div>
-                <h3 className="font-bold text-slate-100 tracking-wide text-base">Study AI Core</h3>
-                <p className="text-xs text-cyan-400/80 font-mono tracking-widest uppercase mt-0.5">Neural Interface</p>
+                <div className="flex items-center gap-2">
+                   <h3 className="font-bold text-slate-100 tracking-wide text-base">Study AI Core</h3>
+                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-[8px] font-black text-emerald-400 uppercase tracking-tighter">Neural Link Active</span>
+                   </div>
+                </div>
+                <p className="text-xs text-cyan-400/80 font-mono tracking-widest uppercase mt-0.5">Ready for Sync</p>
               </div>
             </div>
             <button onClick={() => setIsOpen(false)} className="rounded-full p-2 text-slate-400 hover:bg-slate-800/80 hover:text-cyan-400 transition-colors">
@@ -156,10 +216,9 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
             </button>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-5 scrollbar-thin scrollbar-thumb-cyan-500/30 scrollbar-track-transparent">
+          <div className="flex-1 overflow-y-auto p-5 space-y-5">
             {messages.map((item) => (
-              <div key={item.id} className={`flex ${item.role === "user" ? "justify-end" : "justify-start"} animate-fadeInUp`}>
+              <div key={item.id} className={`flex ${item.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[85%] px-5 py-3.5 text-sm leading-relaxed ${
                   item.role === "user"
                     ? "rounded-2xl rounded-br-none bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-900/40"
@@ -173,7 +232,7 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
                         remarkPlugins={[remarkMath]} 
                         rehypePlugins={[rehypeKatex]}
                       >
-                        {preprocessSummary(item.content) + (item.isStreaming ? " █" : "")}
+                        {preprocessSummary(item.content) + (item.isStreaming ? " ..." : "")}
                       </ReactMarkdown>
                     </div>
                   )}
@@ -181,7 +240,7 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
               </div>
             ))}
             {loading && (
-              <div className="flex justify-start animate-fadeInUp">
+              <div className="flex justify-start">
                 <div className="rounded-2xl rounded-bl-none border border-cyan-500/30 bg-cyan-950/40 px-5 py-4 shadow-[0_0_15px_rgba(0,255,255,0.15)]">
                   <div className="flex gap-2 items-center h-4">
                     <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
@@ -194,7 +253,6 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
             <div ref={messagesEndRef} className="h-2" />
           </div>
 
-          {/* Input Area */}
           <div className="border-t border-cyan-500/30 bg-slate-900/80 p-4 relative">
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50"></div>
             <div className="relative flex items-center">
@@ -220,17 +278,13 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
         </div>
       </div>
 
-      {/* Floating Orbital Button */}
       <div className="fixed bottom-6 right-6 z-50 flex items-center justify-center">
-          {/* Ambient Glow */}
-          <div className="absolute inset-x-0 -bottom-10 h-32 bg-cyan-500/10 blur-3xl opacity-50 rounded-full mix-blend-screen pointer-events-none" />
-        
+        <div className="absolute inset-x-0 -bottom-10 h-32 bg-cyan-500/10 blur-3xl opacity-50 rounded-full mix-blend-screen pointer-events-none" />
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-cyan-500 to-purple-500 text-white shadow-[0_0_40px_rgba(0,255,255,0.6)] transition-all duration-300 hover:scale-110 active:scale-95 hover:shadow-[0_0_50px_rgba(0,255,255,0.8)] animate-float"
           aria-label="Toggle Chat"
         >
-          {/* Pulsing Aura */}
           <div className="absolute inset-0 bg-cyan-400/30 rounded-full filter blur-xl animate-pulse -z-10" style={{ animationDuration: '3s' }} />
           {isOpen ? (
             <svg className="h-7 w-7 transition-all duration-300 rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>

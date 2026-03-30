@@ -44,6 +44,7 @@ type UserContextType = {
   saveEventHistory: (eventId: string, history: any[]) => void;
   syncAllSchedules: () => void;
   updateEventPlanTasks: (eventId: string, newTasks: any[]) => void;
+  syncEventStartTime: (eventId: string) => void;
   logout: () => void;
 };
 
@@ -167,6 +168,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const syncEventStartTime = (eventId: string) => {
+    setProfile((prev) => ({
+      ...prev,
+      events: prev.events.map((ev) =>
+        ev.id === eventId
+          ? { ...ev, plan: { ...ev.plan, generatedAt: new Date().toISOString() } }
+          : ev
+      ),
+    }));
+  };
+
   if (!isMounted) {
     return null; // Prevent hydration mismatch
   }
@@ -184,6 +196,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         saveEventHistory,
         syncAllSchedules,
         updateEventPlanTasks,
+        syncEventStartTime,
         logout,
       }}
     >

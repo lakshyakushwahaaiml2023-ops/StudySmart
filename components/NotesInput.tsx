@@ -13,6 +13,7 @@ interface Props {
   questionCount: number;
   setQuestionCount: (count: number) => void;
   variant?: "full" | "compact";
+  showUploadInCompact?: boolean;
 }
 
 export default function NotesInput({
@@ -25,6 +26,7 @@ export default function NotesInput({
   questionCount,
   setQuestionCount,
   variant = "full",
+  showUploadInCompact = false,
 }: Props) {
   const [isDragActive, setIsDragActive] = useState(false);
   const [filePreview, setFilePreview] = useState<string>("");
@@ -112,6 +114,13 @@ export default function NotesInput({
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4">
+        <input
+          ref={fileInputRef}
+          type="file"
+          onChange={handleFileInput}
+          accept=".pdf,.txt"
+          className="hidden"
+        />
         {variant !== "compact" && (
           <>
             {/* File Upload Area */}
@@ -126,14 +135,6 @@ export default function NotesInput({
                   : "border-slate-700 hover:border-slate-600 hover:bg-slate-800/30"
               }`}
             >
-              <input
-                ref={fileInputRef}
-                type="file"
-                onChange={handleFileInput}
-                accept=".pdf,.txt"
-                className="hidden"
-              />
-
               <div
                 onClick={() => fileInputRef.current?.click()}
                 className="p-4 sm:p-8 text-center hover:bg-slate-800/30 transition-colors rounded-xl"
@@ -298,6 +299,22 @@ export default function NotesInput({
                 </>
               )}
             </button>
+
+            {variant === "compact" && showUploadInCompact && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                className="btn bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 px-4"
+                title="Upload PDF/TXT"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <span className="text-xs font-bold uppercase tracking-tight">Add Material</span>
+                </div>
+              </button>
+            )}
 
             {value.trim() && (
               <button

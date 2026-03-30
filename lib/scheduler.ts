@@ -24,22 +24,38 @@ export const calculateEventSchedule = (event: any) => {
   
   return event.plan.today_tasks.map((task: any, i: number) => {
     const taskId = `task-${event.id}-${i}`;
+    const isCompleted = completedIds.includes(taskId);
     const duration = parseDurationInMinutes(task.estimated_time);
-    const startTime = new Date(cumulativeTime.getTime());
-    const endTime = new Date(startTime.getTime() + duration * 60000);
+    
+    // Logic: The first uncompleted task starts at current cumulativeTime.
+    // Completed tasks are treated as "past" and don't push the current anchor forward.
+    let startTime: Date;
+    let endTime: Date;
+
+    if (isCompleted) {
+      // Completed tasks technically happened before the current anchor block
+      // We show them as ending at the anchor point relative to their duration
+      endTime = new Date(cumulativeTime.getTime());
+      startTime = new Date(endTime.getTime() - duration * 60000);
+      // DO NOT advance cumulativeTime for the rest of the schedule
+    } else {
+      startTime = new Date(cumulativeTime.getTime());
+      endTime = new Date(startTime.getTime() + duration * 60000);
+      cumulativeTime = endTime; // Advance for the next uncompleted task
+    }
     
     const timeSlotStr = `${formatTime(startTime)} – ${formatTime(endTime)}`;
-    cumulativeTime = endTime;
 
     return {
       ...task,
       id: taskId,
       eventId: event.id,
       eventName: event.name,
-      isCompleted: completedIds.includes(taskId),
+      isCompleted,
       startTime: formatTime(startTime),
       endTime: formatTime(endTime),
       timeSlot: timeSlotStr,
+      generatedAt: event.plan.generatedAt,
     };
   });
 };
