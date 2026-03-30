@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { extractPDFText } from "@/lib/pdfExtractor";
+import { resizeImage } from "@/lib/imageUtils";
 
 interface Props {
   value: string;
@@ -31,6 +32,7 @@ export default function NotesInput({
   const [isDragActive, setIsDragActive] = useState(false);
   const [filePreview, setFilePreview] = useState<string>("");
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isScanningOCR, setIsScanningOCR] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -51,12 +53,14 @@ export default function NotesInput({
     try {
       let extractedText = "";
 
-      if (file.type === "application/pdf") {
+      if (file.type.startsWith("image/")) {
+        extractedText = await handleOCR(file);
+      } else if (file.type === "application/pdf") {
         extractedText = await extractPDFText(file);
       } else if (file.type === "text/plain") {
         extractedText = await file.text();
       } else {
-        throw new Error("Unsupported file type. Please use PDF or TXT files.");
+        throw new Error("Unsupported file type. Please use PDF, TXT, or Image files.");
       }
 
       onChange(extractedText);
@@ -65,10 +69,34 @@ export default function NotesInput({
       );
     } catch (error) {
       setFilePreview(
-        `✗ Error reading file: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `✗ Error: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     } finally {
       setIsExtracting(false);
+      setIsScanningOCR(false);
+    }
+  };
+
+  const handleOCR = async (file: File): Promise<string> => {
+    setIsScanningOCR(true);
+    try {
+      const optimizedBase64 = await resizeImage(file);
+      const res = await fetch("/api/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: optimizedBase64 }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Neural OCR failed to analyze handwriting");
+      }
+      
+      const data = await res.json();
+      return data.text;
+    } catch (e) {
+      console.error("OCR Client Error:", e);
+      throw e;
     }
   };
 
@@ -118,7 +146,7 @@ export default function NotesInput({
           ref={fileInputRef}
           type="file"
           onChange={handleFileInput}
-          accept=".pdf,.txt"
+          accept=".pdf,.txt,.jpg,.jpeg,.png"
           className="hidden"
         />
         {variant !== "compact" && (
@@ -137,8 +165,18 @@ export default function NotesInput({
             >
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="p-4 sm:p-8 text-center hover:bg-slate-800/30 transition-colors rounded-xl"
+                className="p-4 sm:p-8 text-center hover:bg-slate-800/30 transition-colors rounded-xl relative overflow-hidden"
               >
+                {/* Neural Scan Animation */}
+                {isScanningOCR && (
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-md px-4">
+                     <div className="relative w-full max-w-xs h-1 bg-slate-800 rounded-full overflow-hidden mb-4">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400 to-transparent w-32 animate-[shimmer_2s_infinite]" style={{ width: '50%' }} />
+                        <div className="absolute inset-x-0 h-0.5 bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)] animate-[scan_2s_infinite]" />
+                     </div>
+                     <p className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.2em] animate-pulse">Digitizing Handwritten Notes...</p>
+                  </div>
+                )}
                 <div className="mb-4 flex justify-center">
                   <svg
                     className={`w-12 h-12 transition-all duration-300 ${
@@ -161,20 +199,20 @@ export default function NotesInput({
 
                 {isExtracting ? (
                   <div>
-                    <p className="text-slate-300 font-semibold">
-                      Processing file...
+                    <p className="text-slate-300 font-semibold uppercase tracking-widest text-xs animate-pulse">
+                      Neural Extraction Active...
                     </p>
-                    <div className="mt-2 flex justify-center">
-                      <div className="spinner"></div>
+                    <div className="mt-4 flex justify-center">
+                      <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
                     </div>
                   </div>
                 ) : (
                   <div>
                     <p className="text-slate-200 font-semibold">
-                      Drop your file here or click to upload
+                      Drop your notes here or click to upload
                     </p>
                     <p className="text-slate-400 text-sm mt-2">
-                      Supports PDF & TXT files
+                       Supports PDF, TXT & Handwritten Photos (OCR)
                     </p>
                   </div>
                 )}
@@ -354,6 +392,18 @@ export default function NotesInput({
           </ul>
         </div>
       )}
+      <style jsx>{`
+        @keyframes scan {
+          0% { top: 0%; opacity: 0; }
+          20% { opacity: 1; }
+          80% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
+        }
+      `}</style>
     </div>
   );
 }

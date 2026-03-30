@@ -7,6 +7,7 @@ import rehypeKatex from "rehype-katex";
 import { streamTextInChunks } from "@/lib/animations";
 import { useUser } from "@/lib/UserContext";
 import { calculateEventSchedule } from "@/lib/scheduler";
+import { sounds } from "@/lib/sounds";
 
 type ChatMessage = {
   id: string;
@@ -71,6 +72,7 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
+    sounds.playBlip();
 
     try {
       const response = await fetch("/api/chat", {
@@ -94,6 +96,7 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
       }
 
       const data = (await response.json()) as { reply: string };
+      sounds.playNotify();
       
       const assistantMessageId = (Date.now() + 1).toString();
       setMessages((prev) => [
@@ -188,94 +191,121 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
 
   return (
     <>
-      <div className={`fixed bottom-28 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-md transition-all duration-500 origin-bottom-right ${
-        isOpen ? "scale-100 opacity-100 pointer-events-auto" : "scale-95 opacity-0 pointer-events-none"
-      }`}>
-        <div className="flex flex-col h-[550px] max-h-[75vh] rounded-3xl border border-cyan-500/40 bg-[#070b14] shadow-[0_0_50px_rgba(0,255,255,0.15)] overflow-hidden">
-          <div className="flex items-center justify-between bg-gradient-to-r from-cyan-950/80 to-purple-950/80 border-b border-cyan-500/30 px-5 py-4">
-            <div className="flex items-center gap-4">
-              <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-cyan-500/20 shadow-[0_0_20px_rgba(0,255,255,0.4)]">
-                <div className="absolute inset-0 rounded-full border-2 border-cyan-400/50 animate-ping opacity-20"></div>
-                <svg className="h-6 w-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                   <h3 className="font-bold text-slate-100 tracking-wide text-base">Study AI Core</h3>
-                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-[8px] font-black text-emerald-400 uppercase tracking-tighter">Neural Link Active</span>
+      <div className="z-50 pointer-events-none">
+        {isOpen && (
+          <div className="fixed bottom-24 right-6 w-96 max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-8rem)] rounded-3xl bg-[#0a0f18]/80 backdrop-blur-2xl border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden animate-fadeInUp pointer-events-auto z-[60]">
+            {/* Header */}
+            <div className="p-5 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-transparent via-cyan-500/5 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group relative">
+                   <div className="absolute inset-0 bg-cyan-500/20 rounded-2xl blur-lg animate-pulse" />
+                   <svg className="w-6 h-6 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                   </svg>
+                </div>
+                <div>
+                   <div className="flex items-center gap-2">
+                       <h3 className="font-bold text-slate-100 tracking-wide text-base">Study AI Core</h3>
+                       <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-[8px] font-black text-emerald-400 uppercase tracking-tighter">Neural Link Active</span>
+                       </div>
                    </div>
-                </div>
-                <p className="text-xs text-cyan-400/80 font-mono tracking-widest uppercase mt-0.5">Ready for Sync</p>
-              </div>
-            </div>
-            <button onClick={() => setIsOpen(false)} className="rounded-full p-2 text-slate-400 hover:bg-slate-800/80 hover:text-cyan-400 transition-colors">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-5 space-y-5">
-            {messages.map((item) => (
-              <div key={item.id} className={`flex ${item.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] px-5 py-3.5 text-sm leading-relaxed ${
-                  item.role === "user"
-                    ? "rounded-2xl rounded-br-none bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-900/40"
-                    : "rounded-2xl rounded-bl-none border border-slate-700/60 bg-slate-800/80 text-slate-200 shadow-md prose prose-invert max-w-none"
-                }`}>
-                  {item.role === "user" ? (
-                    <p className="whitespace-pre-wrap font-medium">{item.content}</p>
-                  ) : (
-                    <div className="prose prose-invert prose-sm max-w-none">
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkMath]} 
-                        rehypePlugins={[rehypeKatex]}
-                      >
-                        {preprocessSummary(item.content) + (item.isStreaming ? " ..." : "")}
-                      </ReactMarkdown>
-                    </div>
-                  )}
+                   <p className="text-[10px] text-cyan-400/80 font-mono tracking-[0.2em] uppercase mt-0.5">Optimized Sync Ready</p>
                 </div>
               </div>
-            ))}
-            {loading && (
-              <div className="flex justify-start">
-                <div className="rounded-2xl rounded-bl-none border border-cyan-500/30 bg-cyan-950/40 px-5 py-4 shadow-[0_0_15px_rgba(0,255,255,0.15)]">
-                  <div className="flex gap-2 items-center h-4">
-                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} className="h-2" />
-          </div>
-
-          <div className="border-t border-cyan-500/30 bg-slate-900/80 p-4 relative">
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50"></div>
-            <div className="relative flex items-center">
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleInputKeyDown}
-                placeholder="Initialize query..."
-                disabled={loading}
-                className="w-full rounded-2xl border border-slate-700 bg-slate-950/80 py-3.5 pl-5 pr-14 text-sm font-medium text-slate-100 placeholder:text-slate-500 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 focus:outline-none transition-all shadow-inner"
-              />
-              <button
-                onClick={() => void sendMessage()}
-                disabled={loading || !input.trim()}
-                className="absolute right-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 p-2 text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-md shadow-cyan-900/50"
+              <button 
+                onClick={() => setIsOpen(false)} 
+                className="rounded-full p-2 text-slate-400 hover:bg-white/5 hover:text-white transition-all"
               >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {messages.map((msg) => (
+                <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {msg.role === "assistant" && (
+                    <div className="w-8 h-8 rounded-lg bg-slate-900 border border-white/5 flex items-center justify-center text-cyan-500 shrink-0 shadow-lg">
+                      <span className="text-sm">🤖</span>
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[85%] rounded-2xl p-4 text-sm leading-relaxed ${
+                      msg.role === "assistant"
+                        ? "bg-slate-900/40 border border-white/5 text-slate-200"
+                        : "bg-gradient-to-br from-cyan-600 to-blue-700 text-white shadow-lg shadow-cyan-900/20"
+                    } ${msg.isStreaming ? "animate-pulse" : ""}`}
+                  >
+                    {msg.isStreaming ? (
+                       <div className="flex flex-col gap-2">
+                         <div className="h-2 w-32 bg-cyan-500/20 rounded-full animate-shimmer" />
+                         <div className="h-2 w-24 bg-cyan-500/20 rounded-full animate-shimmer delay-75" />
+                         <div className="h-2 w-28 bg-cyan-500/20 rounded-full animate-shimmer delay-150" />
+                       </div>
+                    ) : (
+                      <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/5">
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkMath]} 
+                          rehypePlugins={[rehypeKatex]}
+                        >
+                          {preprocessSummary(msg.content)}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                 <div className="flex justify-start items-end gap-3 animate-fadeInUp">
+                    <div className="w-8 h-8 rounded-lg bg-slate-900 border border-white/5 flex items-center justify-center text-cyan-500 shrink-0">
+                       <span className="text-sm animate-bounce">🤖</span>
+                    </div>
+                    <div className="bg-slate-900/40 border border-white/5 rounded-2xl p-4 flex gap-1.5">
+                       <div className="w-1.5 h-1.5 bg-cyan-500/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                       <div className="w-1.5 h-1.5 bg-cyan-500/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                       <div className="w-1.5 h-1.5 bg-cyan-500/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                 </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="p-4 border-t border-white/5 bg-slate-900/20">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  sendMessage();
+                }}
+                className="relative group"
+              >
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Initialize query..."
+                  className="w-full bg-slate-950/80 border border-white/10 rounded-2xl py-3.5 pl-4 pr-12 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all group-hover:border-white/20 shadow-inner"
+                />
+                <button
+                  type="submit"
+                  disabled={loading || !input.trim()}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500 hover:text-white disabled:opacity-30 disabled:hover:bg-cyan-500/10 disabled:hover:text-cyan-400 transition-all"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                  </svg>
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="fixed bottom-6 right-6 z-50 flex items-center justify-center">
@@ -293,6 +323,17 @@ export default function ChatCloudButton({ contextData }: ChatCloudButtonProps) {
           )}
         </button>
       </div>
+
+      <style jsx>{`
+        @keyframes shimmer {
+          0% { opacity: 0.3; transform: translateX(-10%); }
+          50% { opacity: 0.8; transform: translateX(5%); }
+          100% { opacity: 0.3; transform: translateX(-10%); }
+        }
+        .animate-shimmer {
+          animation: shimmer 2s ease-in-out infinite;
+        }
+      `}</style>
     </>
   );
 }

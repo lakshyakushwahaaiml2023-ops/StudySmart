@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { sounds } from "@/lib/sounds";
 
 export type Event = {
   id: string;
@@ -115,14 +116,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
       ...prev,
       events: prev.events.map((ev) => {
         if (ev.id === eventId) {
-          const completedTasks = ev.completedTasks || [];
-          const isCompleted = completedTasks.includes(taskId);
-          return {
-            ...ev,
-            completedTasks: isCompleted
-              ? completedTasks.filter((id) => id !== taskId)
-              : [...completedTasks, taskId],
-          };
+            const completedTasks = ev.completedTasks || [];
+            const isCompleted = completedTasks.includes(taskId);
+            
+            // Premium Sound Feedback
+            if (!isCompleted) {
+              sounds.playSuccess();
+            }
+
+            return {
+              ...ev,
+              completedTasks: isCompleted
+                ? completedTasks.filter((id) => id !== taskId)
+                : [...completedTasks, taskId],
+            };
         }
         return ev;
       }),

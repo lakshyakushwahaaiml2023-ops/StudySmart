@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { useUser, Event } from "@/lib/UserContext";
 import { extractPDFText } from "@/lib/pdfExtractor";
 import { calculateEventSchedule } from "@/lib/scheduler";
+import { sounds } from "@/lib/sounds";
+import { resizeImage } from "@/lib/imageUtils";
 
 // Helper function to extract deadline logic so it can be used for filtering
 function getTaskDeadline(
@@ -108,10 +110,10 @@ function TaskCard({
 
   return (
     <div
-      className={`card-interactive !p-0 overflow-hidden transition-all duration-300 border ${
+      className={`card-interactive !p-0 overflow-hidden transition-all duration-500 border ${
         isLocked ? "opacity-30 grayscale-[50%] pointer-events-none cursor-not-allowed border-slate-800" :
-        isCompleted ? "opacity-60 border-emerald-500/30 bg-emerald-950/5" : 
-        "bg-[#0a0f18] border-slate-800/50"
+        isCompleted ? "opacity-100 border-emerald-500/40 bg-emerald-950/20 shadow-[0_0_20px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/20" : 
+        "bg-[#0a0f18] border-slate-800/50 hover:border-cyan-500/30"
       }`}
     >
       <div className="flex items-stretch">
@@ -140,10 +142,10 @@ function TaskCard({
              </svg>
           ) : isCompleted ? (
             <div className="flex flex-col items-center">
-               <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+               <svg className="w-7 h-7 text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-bounce" fill="currentColor" viewBox="0 0 20 20" style={{ animationDuration: '2s' }}>
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                </svg>
-               <span className="text-[7px] font-black uppercase tracking-tighter mt-0.5">Verified</span>
+               <span className="text-[7px] font-black uppercase tracking-tighter mt-1 text-emerald-400">Mastered</span>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-1 group-hover:animate-pulse">
@@ -401,6 +403,16 @@ function AILoadingOverlay({ eventName }: { eventName: string }) {
       </div>
 
       <style jsx>{`
+        @keyframes scan {
+          0% { top: 0%; opacity: 0; }
+          20% { opacity: 1; }
+          80% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
+        }
         @keyframes scanLine {
           0% { top: 0%; opacity: 0; }
           50% { opacity: 1; }
@@ -415,6 +427,48 @@ function AILoadingOverlay({ eventName }: { eventName: string }) {
         }
         .animate-loadingProgress {
           animation: loadingProgress 15s linear forwards;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function NeuralCelebration({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/90 backdrop-blur-3xl animate-fadeIn">
+      <div className="max-w-xl w-full text-center p-12 space-y-8 relative overflow-hidden rounded-[3rem] border border-emerald-500/30 bg-emerald-950/5 shadow-[0_0_100px_rgba(16,185,129,0.2)]">
+        {/* Animated Background Rays */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[conic-gradient(from_0deg,transparent,theme(colors.emerald.400),transparent)] animate-spin-slow" />
+        </div>
+        
+        <div className="relative z-10 space-y-6">
+          <div className="text-7xl animate-bounce">🏆</div>
+          <h2 className="text-5xl font-black text-white italic tracking-tighter uppercase leading-none">
+            Mastery Achieved
+          </h2>
+          <div className="flex flex-col items-center gap-2">
+             <p className="text-emerald-400 font-mono text-sm font-black uppercase tracking-[0.3em]">Neural Calibration: 100%</p>
+             <div className="h-0.5 w-48 bg-gradient-to-r from-transparent via-emerald-500 to-transparent" />
+          </div>
+          <p className="text-slate-400 text-lg font-medium leading-relaxed max-w-md mx-auto">
+             Your core performance metrics have exceeded the target threshold for today. Your roadmap has been optimized for maximum retention.
+          </p>
+          <button 
+             onClick={onDismiss}
+             className="px-10 py-4 rounded-full bg-emerald-500 text-slate-950 font-black uppercase tracking-widest hover:scale-110 active:scale-95 transition-all shadow-[0_0_30px_rgba(16,185,129,0.5)]"
+          >
+             Continue Evolution
+          </button>
+        </div>
+      </div>
+      <style jsx>{`
+        @keyframes spin-slow {
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        .animate-spin-slow {
+          animation: spin-slow 15s linear infinite;
         }
       `}</style>
     </div>
@@ -438,6 +492,9 @@ export default function StudyPlanner() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loadingEventId, setLoadingEventId] = useState<string | null>(null);
   const [notifiedTaskIds, setNotifiedTaskIds] = useState<Set<string>>(new Set());
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [hasCelebratedToday, setHasCelebratedToday] = useState(false);
+  const [isScanningOCR, setIsScanningOCR] = useState(false);
 
   // Syllabus Upload State
   const [isDragActiveSyllabus, setIsDragActiveSyllabus] = useState(false);
@@ -462,20 +519,46 @@ export default function StudyPlanner() {
     try {
       let extractedText = "";
 
-      if (file.type === "application/pdf") {
+      if (file.type.startsWith("image/")) {
+        extractedText = await handleOCR(file);
+      } else if (file.type === "application/pdf") {
         extractedText = await extractPDFText(file);
       } else if (file.type === "text/plain") {
         extractedText = await file.text();
       } else {
-        throw new Error("Unsupported file type. Please use PDF or TXT files.");
+        throw new Error("Unsupported file type. Please use PDF, TXT, or Image files.");
       }
 
       setSyllabus(extractedText);
-      setFilePreviewSyllabus(`✓ Extracted ${extractedText.split(/\s+/).length} words from ${file.name}`);
+      setFilePreviewSyllabus(`✓ Digitzed ${file.name}`);
     } catch (error) {
-      setFilePreviewSyllabus(`✗ Error reading file: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setFilePreviewSyllabus(`✗ Error: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsExtractingSyllabus(false);
+      setIsScanningOCR(false);
+    }
+  };
+
+  const handleOCR = async (file: File): Promise<string> => {
+    setIsScanningOCR(true);
+    try {
+      const optimizedBase64 = await resizeImage(file);
+      const res = await fetch("/api/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: optimizedBase64 }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Neural OCR failed to analyze handwriting");
+      }
+      
+      const data = await res.json();
+      return data.text;
+    } catch (e) {
+      console.error("OCR Client Error:", e);
+      throw e;
     }
   };
 
@@ -500,6 +583,17 @@ export default function StudyPlanner() {
   const allTodaysTasks = profile.events.flatMap((event) => {
     return calculateEventSchedule(event);
   });
+
+  // Celebration Logic
+  useEffect(() => {
+    const total = allTodaysTasks.length;
+    const completed = allTodaysTasks.filter(t => t.isCompleted).length;
+    if (total > 0 && completed === total && !hasCelebratedToday) {
+      setShowCelebration(true);
+      setHasCelebratedToday(true);
+      sounds.playSuccess();
+    }
+  }, [allTodaysTasks, hasCelebratedToday]);
 
   // Add a listener for the AI-triggered sync signal
   useEffect(() => {
@@ -648,6 +742,9 @@ export default function StudyPlanner() {
 
   return (
     <div className="animate-fadeInUp space-y-8 relative">
+      {/* Achievement Overlay */}
+      {showCelebration && <NeuralCelebration onDismiss={() => setShowCelebration(false)} />}
+      
       {/* AI Loading Experience */}
       {loadingEventId && (
         <AILoadingOverlay 
@@ -659,9 +756,15 @@ export default function StudyPlanner() {
           <h2 className="text-3xl font-bold gradient-text">
             Dynamic Study Planner
           </h2>
-          <p className="text-slate-400 mt-2">
-            AI-driven tasks tailored to your schedule and chat history.
-          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 animate-pulse">
+               <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+               <span className="text-[8px] font-black text-cyan-400 uppercase tracking-tighter">System Status: Optimized</span>
+            </div>
+            <p className="text-xs text-slate-500 font-medium tracking-tight">
+               AI-driven tasks tailored to your profile.
+            </p>
+          </div>
         </div>
         <button
           onClick={() => setIsCreatingEvent(true)}
@@ -670,6 +773,64 @@ export default function StudyPlanner() {
           <span className="text-xl leading-none">+</span> New Exam / Event
         </button>
       </div>
+
+      {/* Global Mastery Hub (Aggregated Progress) */}
+      {allTodaysTasks.length > 0 && (
+        <div className="glass rounded-3xl p-8 border border-white/10 relative overflow-hidden group shadow-2xl">
+           {/* Static Futuristic SVG Neural Background */}
+           <div className="absolute inset-0 opacity-[0.03] pointer-events-none group-hover:opacity-[0.06] transition-opacity duration-1000">
+              <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                 <path d="M10,10 L90,90 M10,90 L90,10 M50,0 L50,100 M0,50 L100,50" stroke="white" strokeWidth="0.1" fill="none" />
+                 <circle cx="10" cy="10" r="1" fill="white" className="animate-pulse" />
+                 <circle cx="90" cy="90" r="1" fill="white" className="animate-pulse" />
+                 <circle cx="50" cy="50" r="1.5" fill="white" className="animate-pulse" />
+                 <circle cx="50" cy="10" r="0.8" fill="white" className="animate-pulse" />
+              </svg>
+           </div>
+           
+           {/* Pulsing Glows */}
+           <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 blur-[100px] -mr-32 -mt-32 transition-all duration-700 animate-pulse" />
+           <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/10 blur-[80px] -ml-24 -mb-24 transition-all duration-700" />
+           
+           <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10 text-center md:text-left">
+              <div className="space-y-1">
+                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <span className="text-cyan-400">⚡</span> Total Daily Mastery
+                 </h3>
+                 <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-black text-white font-mono">
+                       {Math.round((allTodaysTasks.filter(t => t.isCompleted).length / allTodaysTasks.length) * 100)}%
+                    </span>
+                    <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">Efficiency</span>
+                 </div>
+              </div>
+
+              <div className="flex-1 max-w-md w-full space-y-3">
+                 <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest px-1">
+                    <span className="text-cyan-400">Neural Calibration</span>
+                    <span className="text-slate-500">{allTodaysTasks.filter(t => t.isCompleted).length} / {allTodaysTasks.length} Units Mastered</span>
+                 </div>
+                 <div className="h-3 w-full bg-slate-900/80 rounded-full border border-white/5 overflow-hidden shadow-inner p-0.5">
+                    <div 
+                       className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 rounded-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+                       style={{ width: `${(allTodaysTasks.filter(t => t.isCompleted).length / allTodaysTasks.length) * 100}%` }}
+                    />
+                 </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                 <div className="p-3 rounded-2xl bg-slate-900/60 border border-white/5 text-center min-w-[80px]">
+                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Time Saved</div>
+                    <div className="text-lg font-black text-green-400">~24m</div>
+                 </div>
+                 <div className="p-3 rounded-2xl bg-slate-900/60 border border-white/5 text-center min-w-[80px]">
+                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Current Level</div>
+                    <div className="text-lg font-black text-purple-400">Elite</div>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
 
       {isCreatingEvent && (
         <div className="card border-cyan-500/50">
@@ -725,14 +886,25 @@ export default function StudyPlanner() {
                   ref={fileInputRefSyllabus}
                   type="file"
                   onChange={handleSyllabusFileInput}
-                  accept=".pdf,.txt"
+                  accept=".pdf,.txt,.jpg,.jpeg,.png"
                   className="hidden"
                 />
 
                 <div
                   onClick={() => fileInputRefSyllabus.current?.click()}
-                  className="p-6 text-center hover:bg-slate-900/20 transition-colors rounded-xl"
+                  className="p-6 text-center hover:bg-slate-900/20 transition-colors rounded-xl overflow-hidden relative"
                 >
+                  {/* Neural Scan Animation */}
+                  {isScanningOCR && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-950/60 backdrop-blur-sm px-4">
+                       <div className="relative w-full max-w-xs h-1 bg-slate-800 rounded-full overflow-hidden mb-4">
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400 to-transparent w-32 animate-[shimmer_2s_infinite]" style={{ width: '50%' }} />
+                          <div className="absolute inset-x-0 h-0.5 bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)] animate-[scan_2s_infinite]" />
+                       </div>
+                       <p className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.2em] animate-pulse">Analyzing Handwriting Evolution...</p>
+                    </div>
+                  )}
+
                   <div className="mb-2 flex justify-center">
                     <svg
                       className={`w-10 h-10 transition-all duration-300 ${
@@ -757,16 +929,16 @@ export default function StudyPlanner() {
                     <div className="py-2">
                        <div className="flex items-center justify-center gap-2">
                           <div className="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-                          <p className="text-slate-300 text-sm font-bold">Extracting Syllabus Data...</p>
+                          <p className="text-slate-300 text-sm font-bold">Neural Transcription Active...</p>
                        </div>
                     </div>
                   ) : (
                     <div>
                       <p className="text-slate-300 text-sm font-bold">
-                        Drop Syllabus PDF/TXT or click to upload
+                        Drop PDF, TXT or Photos of Notes
                       </p>
                       <p className="text-slate-500 text-[10px] mt-1 font-bold uppercase tracking-widest">
-                        Smart AI Scan Enabled
+                        Neural OCR enabled for handwriting
                       </p>
                     </div>
                   )}
